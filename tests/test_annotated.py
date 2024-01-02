@@ -404,6 +404,31 @@ def test_annotated_field_info_not_lost_from_forwardref():
         }
     ]
 
+def test_min_length_field_info_not_lost():
+    from pydantic import BaseModel
+
+    class AnnotatedFieldModel(BaseModel):
+        foo: 'Annotated[String, Field(min_length=3)]' = Field(description='hello')
+
+    String = str
+
+    AnnotatedFieldModel.model_rebuild()
+
+    assert AnnotatedFieldModel(foo='000').foo == '000'
+
+    with pytest.raises(ValidationError) as exc_info:
+        AnnotatedFieldModel(foo='00')
+
+    assert exc_info.value.errors(include_url=False) == [
+        {
+            'loc': ('foo',),
+            'input': '00',
+            'ctx': {'min_length': 3},
+            'msg': 'String should have at least 3 characters',
+            'type': 'string_too_short',
+        }
+    ]
+
 
 def test_annotated_private_field_with_default():
     class AnnotatedPrivateFieldModel(BaseModel):
